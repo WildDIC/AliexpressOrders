@@ -1,2 +1,0 @@
-http://www.lfd.uci.edu/~gohlke/pythonlibs/6kbpejrn/lxml-3.4.4-cp35-none-win_amd64.whl
--r requirements.base.txt
