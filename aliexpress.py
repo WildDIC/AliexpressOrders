@@ -106,7 +106,7 @@ def parse_orders(driver='', order_json_file='', cache_mode='webread', track=Fals
         print(e)
         return([])
 
-def get_open_orders(email, passwd, drivertype, driver_path=''):
+def get_driver(drivertype, driver_path=''):
     if drivertype == "Chrome":
         if driver_path is '':
             raise Exception("Driverpath cannot be blank for Chrome")
@@ -127,6 +127,14 @@ def get_open_orders(email, passwd, drivertype, driver_path=''):
         driver = webdriver.Firefox(options=opts)
     else:
         raise Exception("Invalid Driver Type:" + drivertype)
+    return driver
+
+
+def close_driver(driver):
+    driver.quit()
+
+
+def get_open_orders(email, passwd, driver):
     driver.set_window_size(1366, 768)
 
     # restore cookies
@@ -178,7 +186,6 @@ def get_open_orders(email, passwd, drivertype, driver_path=''):
         screenshot_name = sys.argv[2]
         driver.save_screenshot(screenshot_name)
     if 'json' not in modes:
-        driver.quit()
         return {}
 
     aliexpress = {}
@@ -213,16 +220,15 @@ def get_open_orders(email, passwd, drivertype, driver_path=''):
     if DEBUG:
         open("orders.json","w").write(json.dumps(aliexpress))
 
-    driver.quit()
     return(aliexpress)
 
 if __name__ == "__main__":
 
-    if DEBUG_READ:
-        orders = json.loads(open("orders.json","r").read())
-    else:
-        orders = get_open_orders(os.environ['AE_username'], os.environ['AE_passwd'], "Chrome", "chromedriver")
-
-    print(orders.keys())
+    driver = get_driver("Chrome", "chromedriver")
+    try:
+        orders = get_open_orders(os.environ['AE_username'], os.environ['AE_passwd'], driver)
+    except:
+        close_driver(driver)
+    driver.quit()
     #sheets.clear_google_sheet(sheets.URL, sheets.SHEET_NAME)
     #sheets.save_aliexpress_orders(orders)
