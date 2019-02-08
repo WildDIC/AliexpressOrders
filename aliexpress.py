@@ -1,7 +1,7 @@
 import os
 import json
 import time
-# import pdb
+import pickle
 # import sheets
 from pyquery import PyQuery as pq
 from selenium import webdriver
@@ -119,8 +119,10 @@ def get_open_orders(email, passwd, drivertype, driver_path=''):
             raise Exception("Driverpath cannot be blank for Chrome")
         from selenium.webdriver.chrome.options import Options
         opts = Options()
-        opts.add_argument("user-agent="+UA_STRING)
-        driver = webdriver.Chrome(driver_path,chrome_options=opts)
+        opts.add_argument("user-agent=%s" % UA_STRING)
+        opts.add_argument("--headless")
+        opts.add_argument("--disable-gpu")
+        driver = webdriver.Chrome(driver_path, options=opts)
     elif drivertype == "PhantomJS":
         dcap = dict(DesiredCapabilities.PHANTOMJS)
         dcap["phantomjs.page.settings.userAgent"] = (UA_STRING)
@@ -133,25 +135,51 @@ def get_open_orders(email, passwd, drivertype, driver_path=''):
     else:
         raise Exception("Invalid Driver Type:" + drivertype)
     driver.set_window_size(1366, 768)
-    driver.get("https://login.aliexpress.com/buyer.htm")
-    driver.switch_to.frame(driver.find_element_by_id("alibaba-login-box"))
-    element = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, "fm-login-id"))
-    )
-    element.send_keys(email)
-    driver.find_element_by_xpath("//*[@id=\"fm-login-password\"]").send_keys(passwd)
-    driver.find_element_by_id("fm-login-submit").click()
-    driver.switch_to.default_content()
-    element = WebDriverWait(driver, 10).until(
-        #EC.frame_to_be_available_and_switch_to_it((By.ID, "search-key"))
-        EC.presence_of_element_located((By.ID, "search-key"))
-    )
-    driver.get("http://trade.aliexpress.com/orderList.htm")
 
-    # ua = driver.find_element_by_id("nav-user-account")
-    # hov = ActionChains(driver).move_to_element(ua)
-    # hov.perform()
-    # 1/0
+    # restore cookies
+    driver.get("https://login.aliexpress.com/buyer.htm")
+    try:
+        cookies = pickle.load(open("cookies.pkl", "rb"))
+        for cookie in cookies:
+            # only load login.aliexpress.com compatible cookies
+            if not (cookie['domain'] in ('.aliexpress.com', 'login.aliexpress.com')):
+                continue
+            driver.add_cookie(cookie)
+    except Exception as e:
+        print("Error loading cookies, %s" % e)
+
+    driver.get("https://trade.aliexpress.com/orderList.htm")
+
+    try:
+        # see if cookies worked or not
+        element = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, "search-key"))
+        )
+        print("Cookies worked.")
+
+    except:
+        # cookies did not work
+        print("Logging in.")
+        driver.switch_to.frame(driver.find_element_by_id("alibaba-login-box"))
+        element = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, "fm-login-id"))
+        )
+
+        # login and save cookies
+        element.clear()
+        element.send_keys(email)
+        driver.find_element_by_xpath("//*[@id=\"fm-login-password\"]").send_keys(passwd)
+        driver.find_element_by_id("fm-login-submit").click()
+        driver.switch_to.default_content()
+
+    finally:
+        # wait till the page is loaded
+        element = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, "search-key"))
+        )
+        # save cookies for later use
+        pickle.dump(driver.get_cookies() , open("cookies.pkl","wb"))
+
     aliexpress = {}
 
     elemAwaitingShipment = driver.find_element_by_id("remiandTips_waitSendGoodsOrders")
@@ -195,7 +223,7 @@ if __name__ == "__main__":
     if DEBUG_READ:
         orders = json.loads(open("orders.json","r").read())
     else:
-        orders = get_open_orders(os.environ['AE_username'], os.environ['AE_passwd'], "Firefox")
+        orders = get_open_orders(os.environ['AE_username'], os.environ['AE_passwd'], "Chrome", "chromedriver")
 
     print(orders.keys())
     #sheets.clear_google_sheet(sheets.URL, sheets.SHEET_NAME)
