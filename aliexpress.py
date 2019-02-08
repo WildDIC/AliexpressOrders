@@ -1,7 +1,4 @@
-import os
-import json
-import time
-import pickle
+import os, sys, json, time, pickle
 # import sheets
 from pyquery import PyQuery as pq
 from selenium import webdriver
@@ -17,6 +14,7 @@ UA_STRING = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_4) AppleWebKit/537.36 (
 DEBUG = True
 DEBUG_READ = False
 
+modes = sys.argv[1].split(',')
 
 def parse_orders_page(src, driver=None, track=False):
     node = pq(src)
@@ -40,14 +38,12 @@ def parse_orders_page(src, driver=None, track=False):
         }
 
         # GET Tracking id
-        # import pdb
-        # pdb.set_trace()
         if driver and track:
             try:
                 # TODO - handle not found exception
                 t_button = driver.find_element_by_xpath('//*[@button_action="logisticsTracking" and @orderid="{}"]'.format(order['order_id']))
                 hover = ActionChains(driver).move_to_element(t_button).perform()
-                time.sleep(10)
+                time.sleep(5)
 
                 order['tracking_id'] = driver.find_element_by_css_selector('.ui-balloon .bold-text-remind').text.strip().split(':')[1].strip()
                 try:
@@ -82,7 +78,7 @@ def parse_orders(driver='', order_json_file='', cache_mode='webread', track=Fals
         source = driver.find_element_by_id("buyer-ordertable").get_attribute("innerHTML")
     elif cache_mode == 'localwrite' :
         if order_json_file is '':
-            raise Exception("Filename Missing. Please passa vali filename to order_json_file.")
+            raise Exception("Filename Missing. Please pass a valid filename to order_json_file.")
         source = driver.find_element_by_id("buyer-ordertable").get_attribute("innerHTML")
         open(order_json_file,'wb').write(source.encode('utf-8'))
     elif cache_mode == "localread":
@@ -93,7 +89,7 @@ def parse_orders(driver='', order_json_file='', cache_mode='webread', track=Fals
     break_loop = False
     try:
         cur_page,total_page = (int(i) for i in driver.find_element_by_xpath('//*[@id="simple-pager"]/div/label').text.split('/'))
-        while(1):
+        while True:
             if break_loop:
                 break
 
@@ -101,11 +97,8 @@ def parse_orders(driver='', order_json_file='', cache_mode='webread', track=Fals
             orders.extend(parse_orders_page(source, driver, track))
             if cur_page < total_page:
                 link_next = driver.find_element_by_xpath('//*[@id="simple-pager"]/div/a[text()="Next "]')
-                # pdb.set_trace()
                 link_next.click()
                 cur_page,total_page = (int(i) for i in driver.find_element_by_xpath('//*[@id="simple-pager"]/div/label').text.split('/'))
-            # pdb.set_trace()
-            print("Page:%d/%d"%(cur_page,total_page))
             if cur_page == total_page:
                 break_loop = True # to break after parsing the next time
         return orders
@@ -180,36 +173,41 @@ def get_open_orders(email, passwd, drivertype, driver_path=''):
         # save cookies for later use
         pickle.dump(driver.get_cookies() , open("cookies.pkl","wb"))
 
+    if 'screenshot' in modes:
+        # save a screenshot of the orders page
+        screenshot_name = sys.argv[2]
+        driver.save_screenshot(screenshot_name)
+    if 'json' not in modes:
+        driver.quit()
+        return {}
+
     aliexpress = {}
 
     elemAwaitingShipment = driver.find_element_by_id("remiandTips_waitSendGoodsOrders")
     intAwaitingShipment = elemAwaitingShipment.get_attribute("innerText").split("(")[1].strip(")")
     elemAwaitingShipment.click()
-    aliexpress['Not Shipped'] = parse_orders(driver, 'ae1.html','webread')
+    aliexpress['Not Shipped'] = parse_orders(driver, 'ae1.html', 'webread')
 
     elemAwaitingDelivery = driver.find_element_by_id("remiandTips_waitBuyerAcceptGoods")
     intAwaitingDelivery = elemAwaitingDelivery.get_attribute("innerText").split("(")[1].strip(")")
     elemAwaitingDelivery.click()
-    aliexpress['Shipped'] = parse_orders(driver, 'ae2.html','webread', track=True)
+    aliexpress['Shipped'] = parse_orders(driver, 'ae2.html', 'webread', track=True)
 
 
     elemAwaitingShipment = driver.find_element_by_id("remiandTips_waitBuyerPayment")
     intAwaitingShipment = elemAwaitingShipment.get_attribute("innerText").split("(")[1].strip(")")
     elemAwaitingShipment.click()
-    aliexpress['Order Awaiting Payment'] = parse_orders(driver, 'ae3.html','webread')
+    aliexpress['Order Awaiting Payment'] = parse_orders(driver, 'ae3.html', 'webread')
 
+    # Completed orders
     driver.find_element_by_id("switch-filter").click()
-
     try:
         Select(driver.find_element_by_id("order-status")).select_by_value('FINISH')
     except:
         driver.find_element_by_id("switch-filter").click()
         Select(driver.find_element_by_id("order-status")).select_by_value('FINISH')
-
     driver.find_element_by_id("search-btn").click()
-
-    # intCompleted = elemCompleted.get_attribute("innerText").split("(")[1].strip(")")
-    aliexpress['Order Completed'] = parse_orders(driver, 'ae4.html','webread')
+    aliexpress['Order Completed'] = parse_orders(driver, 'ae4.html', 'webread')
 
 
     if DEBUG:
