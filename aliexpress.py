@@ -152,6 +152,8 @@ def get_open_orders(email, passwd, driver):
     driver.get("https://trade.aliexpress.com/orderList.htm")
 
     try:
+        if not os.path.exists('cookies.pkl'):
+            raise Exception('Cookies not found.')
         # see if cookies worked or not
         element = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "search-key"))
@@ -159,7 +161,11 @@ def get_open_orders(email, passwd, driver):
         print("Cookies worked.")
 
     except:
-        # cookies did not work
+        # cookies did not work remove them
+        try:
+            os.remove('cookies.pkl')
+        except OSError:
+            pass
         print("Logging in.")
         driver.switch_to.frame(driver.find_element_by_id("alibaba-login-box"))
         element = WebDriverWait(driver, 10).until(
@@ -185,6 +191,7 @@ def get_open_orders(email, passwd, driver):
         # save a screenshot of the orders page
         screenshot_name = sys.argv[2]
         driver.save_screenshot(screenshot_name)
+        print("%s saved." % screenshot_name)
     if 'json' not in modes:
         return {}
 
@@ -227,7 +234,9 @@ if __name__ == "__main__":
     driver = get_driver("Chrome", "chromedriver")
     try:
         orders = get_open_orders(os.environ['AE_username'], os.environ['AE_passwd'], driver)
-    except:
+    except Exception as e:
+        print("get_open_orders: %s" % e)
+        drive.save_screenshot("error_%s.png" % time.asctime)
         close_driver(driver)
     driver.quit()
     #sheets.clear_google_sheet(sheets.URL, sheets.SHEET_NAME)
