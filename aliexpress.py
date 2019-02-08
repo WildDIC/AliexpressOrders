@@ -236,8 +236,10 @@ if __name__ == "__main__":
         orders = get_open_orders(os.environ['AE_username'], os.environ['AE_passwd'], driver)
     except Exception as e:
         print("get_open_orders: %s" % e)
-        drive.save_screenshot("error_%s.png" % time.asctime)
+        driver.save_screenshot("error_%s.png" % time.asctime)
         close_driver(driver)
-    driver.quit()
+        sys.exit(1)
+
+    close_driver(driver)
     #sheets.clear_google_sheet(sheets.URL, sheets.SHEET_NAME)
     #sheets.save_aliexpress_orders(orders)
