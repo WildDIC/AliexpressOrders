@@ -12,6 +12,7 @@ This will enable you to use powerful spreadsheet filters in google sheets for be
 4. Implement google sheet integration
 5. Implement batch google sheet update (Now update to google sheets is much faster - 20s for 200 plus orders)
 6. Order tracking ID integrated. Also, the last package delivery status for the tracking id is retrieved
+7. Scraps in background, tested both with chromium and firefox headless
 
 ### Work In Progress
 1. Order carrier retrieval
@@ -19,9 +20,6 @@ This will enable you to use powerful spreadsheet filters in google sheets for be
 
 ### To Do
 1. Integrate Tracking ID with an existing tracker to get package logistic updates
-2. Desktop App with UI
-3. Total Payment Integration ( Order Paid, Order cancelled, Dispute refund) details to be separately tracked
-4. Convert selenium integration to headless mode for uninterrupted web scrapping in the background
 
 ### Installation
 * As of the current state, The package is dependant on lxml, pyquery, selenium and Chromedriver/PhantomJS Package. 
