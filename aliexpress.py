@@ -9,7 +9,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.support.ui import Select
 
-UA_STRING = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/29.0.1547.57 Safari/537.36"
+UA_STRING = "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.70 Safari/537.36"
 
 DEBUG = True
 DEBUG_READ = False
@@ -176,7 +176,7 @@ def get_open_orders(email, passwd, driver):
         element.clear()
         element.send_keys(email)
         driver.find_element_by_xpath("//*[@id=\"fm-login-password\"]").send_keys(passwd)
-        driver.find_element_by_id("fm-login-submit").click()
+        driver.find_element_by_tag_name("button").click()
         driver.switch_to.default_content()
 
     finally:
@@ -206,7 +206,6 @@ def get_open_orders(email, passwd, driver):
     intAwaitingDelivery = elemAwaitingDelivery.get_attribute("innerText").split("(")[1].strip(")")
     elemAwaitingDelivery.click()
     aliexpress['Shipped'] = parse_orders(driver, 'ae2.html', 'webread', track=True)
-
 
     elemAwaitingShipment = driver.find_element_by_id("remiandTips_waitBuyerPayment")
     intAwaitingShipment = elemAwaitingShipment.get_attribute("innerText").split("(")[1].strip(")")
